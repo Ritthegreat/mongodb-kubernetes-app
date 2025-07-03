@@ -1,0 +1,46 @@
+piVersion: v1
+kind: Service
+metadata:
+  name: rit-mysql
+spec:
+  type: ClusterIP
+  clusterIP: "None"           # headless so each pod gets its own DNS
+  selector:
+    app: rit-mysql            # matches the StatefulSet’s pod label
+  ports:
+    - name: mysql
+      port: 3306
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rit-mysql
+spec:
+  serviceName: rit-mysql       # links to the headless Service above
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rit-mysql
+  template:
+    metadata:
+      labels:
+        app: rit-mysql
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: mysql
+        image: quay.io/sclorg/mysql-80-c9s
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: "mysql123"     # same password you used in your Pod
+        # (you could swap this out for a Secret if you like)
+        volumeMounts:
+        - name: rit-pv
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: rit-pv
+        persistentVolumeClaim:
+          claimName: rit-pvc   # uses your existing PVC

@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: rit-pod
+  labels:
+    app: rit-mysql
+spec:
+  volumes:
+    - name: rit-pv
+      persistentVolumeClaim:
+        claimName: rit-pvc
+  containers:
+    - name: rit-ctr
+      image: quay.io/sclorg/mysql-80-c9s
+      env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: mysql123
+      ports:
+        - containerPort: 3306
+      volumeMounts:
+        - mountPath: "/mnt"
+          name: rit-pv

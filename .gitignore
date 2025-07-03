@@ -1,0 +1,32 @@
+# Kubernetes secrets
+*.secret.yaml
+*-secret.yaml
+
+# Environment variables
+.env
+
+# Node.js dependencies
+node_modules/
+
+# Python virtual environments
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Logs
+*.log 

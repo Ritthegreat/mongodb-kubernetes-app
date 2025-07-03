@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo-app
+  template:
+    metadata:
+      labels:
+        app: mongo-app
+    spec:
+      imagePullSecrets:
+      - name: regcred
+# kubectl create secret docker-registry regcred \
+#   --docker-server=https://index.docker.io/v1/ \
+#   --docker-username=<your-docker-username> \
+#   --docker-password=<your-docker-password> \
+#   --docker-email=<your-email>
+#____________________________________________
+#       apiVersion: v1
+# data:
+#   .dockerconfigjson: eyJhdXRocyI6eyJodHRwczovL2luZGV4LmRvY2tlci5pby92MS8iOnsidXNlcm5hbWUiOiJyaXR2aWtzaW5oYSIsInBhc3N3b3JkIjoiTnV0YW5peC4xMjMiLCJlbWFpbCI6InJpdHZpazJzaW5oYUBnbWFpbC5jb20iLCJhdXRoIjoiY21sMGRtbHJjMmx1YUdFNlRuVjBZVzVwZUM0eE1qTT0ifX19
+# kind: Secret
+# metadata:
+#   creationTimestamp: "2025-07-03T18:06:00Z"
+#   name: regcred
+#   namespace: default
+#   resourceVersion: "1549590"
+#   uid: c084a8e6-b793-403b-a389-4e45855a10a6
+# type: kubernetes.io/dockerconfigjson
+      containers:
+      - name: mongo-app
+        image: ritviksinha/mongo-flask-app:latest
+        env:
+        - name: MONGO_HOST
+          value: "mongodb-service"
+        - name: MONGO_PORT
+          value: "27017"
+        - name: MONGO_DB
+          value: "test"
+        ports:
+        - containerPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-app-service
+spec:
+  selector:
+    app: mongo-app
+  ports:
+  - port: 5000
+    targetPort: 5000
+  type: ClusterIP 

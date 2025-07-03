@@ -1,0 +1,16 @@
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: rit-sc
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: csi.nutanix.com
+parameters:
+  nfsServer: 10.51.0.86
+  nfsPath: ritwik
+  storageType: NutanixFiles
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+allowVolumeExpansion: false
+mountOptions:
+  - nfsvers=4.0

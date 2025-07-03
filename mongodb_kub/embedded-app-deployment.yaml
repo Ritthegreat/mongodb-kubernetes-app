@@ -1,0 +1,201 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo-app
+  template:
+    metadata:
+      labels:
+        app: mongo-app
+    spec:
+      imagePullSecrets:
+      - name: regcred
+#       apiVersion: v1
+# data:
+#   .dockerconfigjson: eyJhdXRocyI6eyJodHRwczovL2luZGV4LmRvY2tlci5pby92MS8iOnsidXNlcm5hbWUiOiJyaXR2aWtzaW5oYSIsInBhc3N3b3JkIjoiTnV0YW5peC4xMjMiLCJlbWFpbCI6InJpdHZpazJzaW5oYUBnbWFpbC5jb20iLCJhdXRoIjoiY21sMGRtbHJjMmx1YUdFNlRuVjBZVzVwZUM0eE1qTT0ifX19
+# kind: Secret
+# metadata:
+#   creationTimestamp: "2025-07-03T18:06:00Z"
+#   name: regcred
+#   namespace: default
+#   resourceVersion: "1549590"
+#   uid: c084a8e6-b793-403b-a389-4e45855a10a6
+# type: kubernetes.io/dockerconfigjson
+      containers:
+      - name: mongo-app
+        image: python:3.10-slim
+        command: ["sh", "-c"]
+        args:
+          - |
+            pip install flask pymongo &&
+            cat > app.py << 'EOF'
+            from flask import Flask, request, render_template_string
+            from pymongo import MongoClient
+            import os
+
+            app = Flask(__name__)
+
+            # HTML template with MongoDB operations
+            mongo_html = """
+            <!doctype html>
+            <html>
+            <head>
+                <title>MongoDB Operations</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 20px; }
+                    .container { max-width: 800px; margin: 0 auto; }
+                    .form-group { margin-bottom: 15px; }
+                    label { display: block; margin-bottom: 5px; }
+                    input, select, textarea { width: 100%; padding: 8px; box-sizing: border-box; }
+                    button { padding: 10px 15px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+                    .result { margin-top: 20px; padding: 10px; background-color: #f5f5f5; border-radius: 5px; }
+                    pre { white-space: pre-wrap; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>MongoDB Operations</h1>
+                    
+                    <form method="post">
+                        <div class="form-group">
+                            <label for="operation">Select Operation:</label>
+                            <select name="operation" id="operation">
+                                <option value="insert">Insert Document</option>
+                                <option value="find">Find Documents</option>
+                                <option value="update">Update Document</option>
+                                <option value="delete">Delete Document</option>
+                                <option value="list_collections">List Collections</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="collection">Collection Name:</label>
+                            <input type="text" id="collection" name="collection" value="test_collection">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="query">Query/Document (JSON):</label>
+                            <textarea id="query" name="query" rows="5">{"name": "test", "value": 123}</textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <button type="submit">Execute</button>
+                        </div>
+                    </form>
+                    
+                    {% if result %}
+                    <div class="result">
+                        <h3>Result:</h3>
+                        <pre>{{ result }}</pre>
+                    </div>
+                    {% endif %}
+                    
+                    {% if error %}
+                    <div class="result" style="background-color: #ffdddd;">
+                        <h3>Error:</h3>
+                        <pre>{{ error }}</pre>
+                    </div>
+                    {% endif %}
+                </div>
+            </body>
+            </html>
+            """
+
+            def get_mongo_connection():
+                # Get MongoDB connection details from environment variables or use defaults
+                mongo_host = os.environ.get('MONGO_HOST', 'mongodb-service')
+                mongo_port = int(os.environ.get('MONGO_PORT', '27017'))
+                mongo_user = os.environ.get('MONGO_USER', '')
+                mongo_password = os.environ.get('MONGO_PASSWORD', '')
+                mongo_db = os.environ.get('MONGO_DB', 'test')
+                
+                # Build connection string
+                if mongo_user and mongo_password:
+                    connection_string = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}:{mongo_port}/{mongo_db}"
+                else:
+                    connection_string = f"mongodb://{mongo_host}:{mongo_port}/{mongo_db}"
+                
+                # Connect to MongoDB
+                client = MongoClient(connection_string)
+                return client, mongo_db
+
+            @app.route('/', methods=['GET', 'POST'])
+            def index():
+                result = None
+                error = None
+                
+                if request.method == 'POST':
+                    operation = request.form['operation']
+                    collection_name = request.form['collection']
+                    query_text = request.form['query']
+                    
+                    try:
+                        # Parse the JSON query
+                        import json
+                        query_data = json.loads(query_text)
+                        
+                        # Connect to MongoDB
+                        client, db_name = get_mongo_connection()
+                        db = client[db_name]
+                        collection = db[collection_name]
+                        
+                        # Execute the requested operation
+                        if operation == 'insert':
+                            insert_result = collection.insert_one(query_data)
+                            result = f"Inserted document with ID: {insert_result.inserted_id}"
+                            
+                        elif operation == 'find':
+                            find_result = list(collection.find(query_data))
+                            result = json.dumps(str(find_result), indent=2)
+                            
+                        elif operation == 'update':
+                            update_result = collection.update_one(
+                                {"_id": query_data.get("_id")} if "_id" in query_data else {},
+                                {"$set": query_data}
+                            )
+                            result = f"Modified {update_result.modified_count} document(s)"
+                            
+                        elif operation == 'delete':
+                            delete_result = collection.delete_many(query_data)
+                            result = f"Deleted {delete_result.deleted_count} document(s)"
+                            
+                        elif operation == 'list_collections':
+                            collections = db.list_collection_names()
+                            result = json.dumps(collections, indent=2)
+                            
+                        client.close()
+                        
+                    except Exception as e:
+                        error = str(e)
+                
+                return render_template_string(mongo_html, result=result, error=error)
+
+            if __name__ == '__main__':
+                app.run(host='0.0.0.0', port=5000, debug=True)
+            EOF
+            python app.py
+        env:
+        - name: MONGO_HOST
+          value: "mongodb-service"
+        - name: MONGO_PORT
+          value: "27017"
+        - name: MONGO_DB
+          value: "test"
+        ports:
+        - containerPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-app-service
+spec:
+  selector:
+    app: mongo-app
+  ports:
+  - port: 5000
+    targetPort: 5000
+  type: ClusterIP 
