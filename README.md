@@ -11,6 +11,7 @@ This project demonstrates a Flask web application that performs CRUD operations 
   - `mongodb-deployment.yaml` - Kubernetes StatefulSet for MongoDB
   - `storageclass.yaml` - Storage class definition for MongoDB persistence
   - `load-test.js` - k6 load testing script
+  - `cleanup-test-data.js` - Script to clean up test data after load testing
 
 - `mysql_kub/` - MySQL related Kubernetes configurations
 
@@ -21,6 +22,7 @@ This project demonstrates a Flask web application that performs CRUD operations 
 - Persistent MongoDB storage using Kubernetes PVCs
 - Kubernetes deployments for both the application and database
 - Load testing capability with k6
+- Test data cleanup utilities
 
 ## Deployment Instructions
 
@@ -52,6 +54,16 @@ Use k6 to perform load testing:
 ```
 k6 run mongodb_kub/load-test.js
 ```
+
+## Cleaning Up Test Data
+
+After running load tests, you can clean up the test data using:
+
+```
+k6 run mongodb_kub/cleanup-test-data.js
+```
+
+This script will identify and remove all test customers created during load testing.
 
 ## Architecture
 
